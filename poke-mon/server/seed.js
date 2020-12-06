@@ -1,7 +1,9 @@
+
 const express = require('express')
 const cors = require('cors')
 const app = express()
 app.use(cors)
+const pokemonjson = require("./pokedex.json")
 
 const knex = require('knex')({
     client: 'pg',
@@ -31,7 +33,7 @@ if(!exists){
 
 knex.schema.hasTable('pokemon').then((exists)=>{
   if(!exists){
-    return knex.schema.createTableIfNotExists('pokemon',(table)=>{
+    return knex.schema.createTable('pokemon',(table)=>{
     table.string('numéro').primary()
     table.string('nom')
     table.string('nomen')
@@ -52,17 +54,21 @@ knex.schema.hasTable('pokemon').then((exists)=>{
 
 knex.schema.hasTable('moveset').then((exists)=>{
   if(!exists){
-    return knex.schema.createTableIfNotExists('moveset',(table)=>{
+    return knex.schema.createTable('moveset',(table)=>{
     table.string('moveset_pokemon').references('numéro').inTable('pokemon')
     table.string('moveset_move').references('nom').inTable('move')
+
+    
     table.primary(['moveset_pokemon','moveset_move'])
 
 })
 }
 })
+insertMove()
+insertMoveset()
+insertPokemon()
 
-const pokemonjson = require("./pokedex.json")
-
+async function insertPokemon(){
     for(const [key,value] of Object.entries(pokemonjson)) {
         let numéroField =  JSON.stringify(value.numéro).toString()
         let nomField =  JSON.stringify(value.nom).toString()
@@ -90,36 +96,40 @@ const pokemonjson = require("./pokedex.json")
       taille: tailleField,
       poids: poidsField,
       forme: formeField}).then(()=>{
+        console.log("pokemon insertion")
       }).catch(() =>{});
     
     }
+  }
 
-    let attaks = []
+   async function insertMove(){
     for(const [key,value] of Object.entries(pokemonjson)) {
       
-    value.attaques.map((att,index)=>{ 
+      value.attaques.map((att,index)=>{ 
+          
+          knex('move').insert({
+            niveau: JSON.stringify(Object.values(att)[0]).toString(),
+            nom: JSON.stringify(Object.values(att)[1]).toString(),
+            puissance: JSON.stringify(Object.values(att)[2]).toString(),
+            precision: JSON.stringify(Object.values(att)[3]).toString(),
+            pp: JSON.stringify(Object.values(att)[4]).toString()})
+            .then(()=>{console.log("move insertion")})
+            .catch(()=>{})
+    
+      })
+    }
+   }
+   async function insertMoveset(){
+    for(const [key,value] of Object.entries(pokemonjson)) {
       
-      attaks.push(Object.values(att)) 
-  
-        knex('move').insert({
-          niveau: JSON.stringify(Object.values(att)[0]).toString(),
-          nom: JSON.stringify(Object.values(att)[1]).toString(),
-          puissance: JSON.stringify(Object.values(att)[2]).toString(),
-          precision: JSON.stringify(Object.values(att)[3]).toString(),
-          pp: JSON.stringify(Object.values(att)[4]).toString()})
-          .then(()=>{console.log("tt")})
+      value.attaques.map((att,index)=>{ 
+        knex('moveset').insert({
+          moveset_pokemon : JSON.stringify(value.numéro).toString(),
+          moveset_move: JSON.stringify(Object.values(att)[1]).toString()})
+          .then(()=>{console.log("moveset insertion")})
           .catch(()=>{})
+        })
+    }
+   }
+ 
   
-    })
-
-
-    value.attaques.map((att,index)=>{ 
-    knex('moveset').insert({
-      moveset_pokemon : JSON.stringify(value.numéro).toString(),
-      moveset_move: JSON.stringify(Object.values(att)).toString()})
-      .then(()=>{console.log("tt222")})
-      .catch(()=>{})
-    })
-  
-
-  }
